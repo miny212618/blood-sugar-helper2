@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>血糖助手</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f0f8f5; padding: 20px; }
+        .container { background: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+        h1, h2 { text-align: center; }
+        input { width: 100%; padding: 10px; margin: 5px 0 15px 0; border: 1px solid #ccc; border-radius: 5px; }
+        .result { font-weight: bold; color: green; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>血糖助手</h1>
+    <div class="container" id="breakfast">
+        <h2>早餐</h2>
+        <label>血糖</label><input type="number" id="b_glucose">
+        <label>碳水化合物（g）</label><input type="number" id="b_carb">
+        <label>碳水比（CI 值）</label><input type="number" id="b_ci" value="6">
+        <label>實際打的胰島素劑量</label><input type="number" id="b_actual">
+        <div class="result" id="b_result"></div>
+    </div>
+
+    <div class="container" id="lunch">
+        <h2>中餐</h2>
+        <label>血糖</label><input type="number" id="l_glucose">
+        <label>碳水化合物（g）</label><input type="number" id="l_carb">
+        <label>碳水比（CI 值）</label><input type="number" id="l_ci" value="10">
+        <label>實際打的胰島素劑量</label><input type="number" id="l_actual">
+        <div class="result" id="l_result"></div>
+    </div>
+
+    <div class="container" id="dinner">
+        <h2>晚餐</h2>
+        <label>血糖</label><input type="number" id="d_glucose">
+        <label>碳水化合物（g）</label><input type="number" id="d_carb">
+        <label>碳水比（CI 值）</label><input type="number" id="d_ci" value="10">
+        <label>實際打的胰島素劑量</label><input type="number" id="d_actual">
+        <div class="result" id="d_result"></div>
+    </div>
+
+    <script>
+        const correctionFactor = 100;
+
+        function calculate(glucose, carb, ci, actual) {
+            const suggested = carb / ci;
+            const estimated = glucose - (actual - suggested) * correctionFactor;
+            return {
+                suggested: suggested.toFixed(1),
+                estimated: Math.floor(estimated)
+            };
+        }
+
+        function update(meal) {
+            const glucose = parseFloat(document.getElementById(meal + '_glucose').value) || 0;
+            const carb = parseFloat(document.getElementById(meal + '_carb').value) || 0;
+            const ci = parseFloat(document.getElementById(meal + '_ci').value) || 1;
+            const actual = parseFloat(document.getElementById(meal + '_actual').value) || 0;
+            const result = calculate(glucose, carb, ci, actual);
+            document.getElementById(meal + '_result').innerText =
+                '建議胰島素：' + result.suggested + ' 單位\n預估血糖：' + result.estimated + ' mg/dL';
+        }
+
+        ['b', 'l', 'd'].forEach(meal => {
+            ['glucose', 'carb', 'ci', 'actual'].forEach(field => {
+                document.getElementById(meal + '_' + field).addEventListener('input', () => update(meal));
+            });
+        });
+    </script>
+</body>
+</html>
