@@ -1,9 +1,0 @@
-{
-  "name": "血糖助手",
-  "short_name": "血糖助手",
-  "start_url": "index.html",
-  "display": "standalone",
-  "background_color": "#f3f7f5",
-  "theme_color": "#4CAF50",
-  "description": "一個簡單的血糖與胰島素計算工具"
-}
