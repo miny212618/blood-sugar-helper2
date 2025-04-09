@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>血糖助手匯出完整版</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+  <h1>血糖助手</h1>
+  <button onclick="exportExcel()">匯出 Excel</button>
+
+  <script>
+    function exportExcel() {
+      const all = JSON.parse(localStorage.getItem("record_all") || "[]");
+      const header = ["日期", "餐別", "時間", "餐前血糖", "碳水", "CI", "施打", "建議", "預估", "備註"];
+      const rows = [];
+
+      all.forEach(entry => {
+        ["breakfast", "lunch", "dinner"].forEach(meal => {
+          const d = entry[meal];
+          if (d) {
+            rows.push([
+              entry.date || "", meal,
+              d.time || "", d.pre || "", d.carbs || "", d.ci || "", d.actual || "",
+              d.suggested || "", d.predicted || "", d.note || ""
+            ]);
+          }
+        });
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+      XLSX.utils.book_append_sheet(wb, ws, "血糖紀錄");
+      XLSX.writeFile(wb, "血糖紀錄_完整.xlsx");
+    }
+  </script>
+</body>
+</html>
