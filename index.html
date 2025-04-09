@@ -1,0 +1,29 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>血糖助手</title>
+    <link rel="manifest" href="manifest.json" />
+</head>
+<body style="background-color: #e6ffe6; font-family: Arial, sans-serif; padding: 20px;">
+    <h2 style="text-align: center;">血糖助手</h2>
+
+    <label>餐前血糖（mg/dL）<br /><input type="number" id="preMealBloodSugar" /></label><br />
+    <label>目標血糖（mg/dL）<br /><input type="number" id="targetBloodSugar" value="100" /></label><br />
+    <label>血糖修正因子（每 1U 可降幾 mg/dL）<br /><input type="number" id="correctionFactor" value="100" /></label><br />
+    <label>碳水化合物（g）<br /><input type="number" id="carbs" /></label><br />
+    <label>碳水比（CI 值）<br /><span id="ciHint" style="color:red;"></span><br /><input type="number" id="ci" /></label><br />
+    <label>實際打的胰島素劑量<br /><input type="number" id="insulin" /></label><br />
+    <label>備註（吃什麼）<br /><input type="text" id="note" /></label><br /><br />
+    <button onclick="saveData()">儲存資料</button>
+
+    <h3>今日紀錄</h3>
+    <div id="recordList" style="background-color: #eef; padding: 10px;"></div>
+    <button onclick="duplicateToday()">複製今日紀錄</button>
+    <button onclick="exportExcel()">匯出 Excel</button>
+
+    <script src="script.js"></script>
+</body>
+</html>
