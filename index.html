@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>血糖助手紀錄版</title>
+<link href="favicon.ico" rel="icon" type="image/x-icon"/>
+<style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #eaffea; }
+    input, button { margin: 5px 0; padding: 5px; width: 100%; max-width: 300px; }
+    .section { margin-bottom: 30px; }
+    .record-box { background: #eef; padding: 10px; margin-top: 10px; white-space: pre-wrap; }
+    .record-entry { margin-bottom: 10px; }
+    .record-buttons { margin-top: 5px; }
+  </style>
+<link href="manifest.json" rel="manifest"/></head>
+<body>
+<h2 style="text-align: center;">血糖助手</h2>
+<div class="section">
+  餐前血糖（mg/dL）<br/>
+<input id="preMealBloodSugar" oninput="autoCalculate()" type="number"/><br/>
+
+  目標血糖（mg/dL）<br/>
+<input id="targetBloodSugar" oninput="autoCalculate()" type="number" value="100"/><br/>
+
+  血糖修正因子（每 1U 可降幾 mg/dL）<br/>
+<input id="correctionFactor" oninput="autoCalculate()" type="number" value="100"/><br/>
+
+  碳水化合物（g）<br/>
+<input id="carbs" oninput="autoCalculate()" type="number"/><br/>
+
+  碳水比（CI 值）<br/><span style="color:red; font-size: 14px;">體育課 CI 要 +2</span><br/>
+<input id="carbRatio" oninput="autoCalculate()" type="number"/><br/>
+
+  實際打的胰島素劑量<br/>
+<input id="actualInsulin" oninput="autoCalculate()" type="number"/><br/>
+
+  備註（吃什麼）<br/>
+<input id="note" type="text"/><br/>
+
+<button onclick="saveRecord()">儲存資料</button><br/><br/>
+<div id="alertBox" style="color: darkred; font-weight: bold;"></div>
+
+<div id="suggestedInsulin" style="font-weight:bold; color:green;"></div>
+<div id="predictedBloodSugar" style="font-weight:bold; color:green;"></div>
+</div>
+<h3>今日紀錄</h3>
+<div class="record-box" id="records"></div>
+<button onclick="copyRecords()">複製今日紀錄</button>
+<script>
+let editingIndex = null;
+const todayKey = "record_" + new Date().toISOString().split("T")[0];
+
+window.onload = function() {
+  loadRecords();
+  autoCalculate();
+};
+
+function getCurrentTime() {
+  const now = new Date();
+  return now.toTimeString().slice(0,5);
+}
+
+function autoCalculate() {
+  const cf = parseFloat(document.getElementById("correctionFactor").value);
+  const target = parseFloat(document.getElementById("targetBloodSugar").value);
+  const pre = parseFloat(document.getElementById("preMealBloodSugar").value);
+  const carbs = parseFloat(document.getElementById("carbs").value);
+  const ci = parseFloat(document.getElementById("carbRatio").value);
+  const actual = parseFloat(document.getElementById("actualInsulin").value);
+
+  const suggestEl = document.getElementById("suggestedInsulin");
+  const predictEl = document.getElementById("predictedBloodSugar");
+
+  if (!isNaN(pre) && !isNaN(carbs) && !isNaN(ci) && !isNaN(cf) && !isNaN(target)) {
+    const suggested = ((pre - target) / cf + carbs / ci);
+    suggestEl.innerText = `建議胰島素：${suggested.toFixed(2)} 單位`;
+  } else {
+    suggestEl.innerText = "";
+  }
+
+  if (!isNaN(pre) && !isNaN(carbs) && !isNaN(ci) && !isNaN(actual) && !isNaN(cf)) {
+    const predicted = pre - (actual - (carbs / ci)) * cf;
+    predictEl.innerText = `預估血糖：${Math.floor(predicted)} mg/dL`;
+  } else {
+    predictEl.innerText = "";
+  }
+}
+
+function saveRecord() {
+  const pre = document.getElementById("preMealBloodSugar").value;
+  const carbs = document.getElementById("carbs").value;
+  const ci = document.getElementById("carbRatio").value;
+  const actual = document.getElementById("actualInsulin").value;
+  const note = document.getElementById("note").value;
+  const suggestedText = document.getElementById("suggestedInsulin").innerText.split("：")[1] || "null";
+  const predictedText = document.getElementById("predictedBloodSugar").innerText.split("：")[1] || "null";
+  const time = getCurrentTime();
+
+  const entry = {
+    pre, carbs, ci, actual, note,
+    suggested: suggestedText, predicted: predictedText, time: time
+  };
+
+  const records = getSavedRecords();
+  if (editingIndex !== null) {
+    records[editingIndex] = entry;
+    editingIndex = null;
+  } else {
+    records.push(entry);
+  }
+
+  localStorage.setItem(todayKey, JSON.stringify(records));
+  resetForm();
+  renderRecords(records);
+}
+
+function renderRecords(records) {
+  const container = document.getElementById("records");
+  container.innerHTML = "";
+  records.forEach((r, i) => {
+    const div = document.createElement("div");
+    div.className = "record-entry";
+    div.innerHTML = `#${i+1} 時間：${r.time} 餐前血糖：${r.pre}，碳水：${r.carbs}g，CI：${r.ci}，施打：${r.actual}U，備註：${r.note}<br>建議：${r.suggested}，預估：${r.predicted}<br>`;
+    
+    const editBtn = document.createElement("button");
+    editBtn.innerText = "修改";
+    editBtn.onclick = () => loadToForm(i, r);
+
+    const delBtn = document.createElement("button");
+    delBtn.innerText = "刪除";
+    delBtn.onclick = () => deleteRecord(i);
+
+    const btnBox = document.createElement("div");
+    btnBox.className = "record-buttons";
+    btnBox.appendChild(editBtn);
+    btnBox.appendChild(delBtn);
+
+    div.appendChild(btnBox);
+    container.appendChild(div);
+  });
+}
+
+function loadToForm(index, record) {
+  editingIndex = index;
+  document.getElementById("preMealBloodSugar").value = record.pre;
+  document.getElementById("carbs").value = record.carbs;
+  document.getElementById("carbRatio").value = record.ci;
+  document.getElementById("actualInsulin").value = record.actual;
+  document.getElementById("note").value = record.note;
+  autoCalculate();
+}
+
+function deleteRecord(index) {
+  const records = getSavedRecords();
+  records.splice(index, 1);
+  localStorage.setItem(todayKey, JSON.stringify(records));
+  renderRecords(records);
+}
+
+function getSavedRecords() {
+  const saved = localStorage.getItem(todayKey);
+  return saved ? JSON.parse(saved) : [];
+}
+
+function resetForm() {
+  document.getElementById("preMealBloodSugar").value = "";
+  document.getElementById("carbs").value = "";
+  document.getElementById("carbRatio").value = "";
+  document.getElementById("actualInsulin").value = "";
+  document.getElementById("note").value = "";
+  document.getElementById("suggestedInsulin").innerText = "";
+  document.getElementById("predictedBloodSugar").innerText = "";
+}
+
+function loadRecords() {
+  const records = getSavedRecords();
+  renderRecords(records);
+}
+
+function copyRecords() {
+  const records = getSavedRecords().map((r, i) =>
+    `#${i+1} 時間：${r.time} 餐前血糖：${r.pre}，碳水：${r.carbs}g，CI：${r.ci}，施打：${r.actual}U，備註：${r.note}
+建議：${r.suggested}，預估：${r.predicted}
+`
+  ).join("\n");
+  navigator.clipboard.writeText(records).then(() => {
+    alert("今日紀錄已複製！");
+  });
+}
+</script>
+<script>
+function showRecommendations() {
+    const preMeal = parseFloat(document.getElementById("preMealBloodSugar").value);
+    const target = parseFloat(document.getElementById("targetBloodSugar").value);
+    const cf = parseFloat(document.getElementById("correctionFactor").value);
+    const carbs = parseFloat(document.getElementById("carbs").value);
+    const ci = parseFloat(document.getElementById("carbRatio").value);
+    const actual = parseFloat(document.getElementById("actualInsulin").value);
+
+    let alertBox = document.getElementById("alertBox");
+    alertBox.innerHTML = "";
+
+    if (isNaN(preMeal) || isNaN(target) || isNaN(cf) || isNaN(carbs) || isNaN(ci) || isNaN(actual)) return;
+
+    const correctionDose = (preMeal - target) / cf;
+    const carbDose = carbs / ci;
+    const recommended = correctionDose + carbDose;
+    const estimatedBG = preMeal - ((actual - carbDose) * cf);
+
+    let suggestions = [];
+
+    if (estimatedBG < 80 && actual < recommended - 1) {
+        suggestions.push("⚠️ 建議檢查修正因子，可能設太高。");
+    }
+
+    if (preMeal > 130) {
+        const now = new Date();
+        if (now.getHours() >= 7 && now.getHours() <= 20) {
+            suggestions.push("📌 飯前血糖偏高，可觀察是否需增加長效胰島素（+10~20%）。");
+        }
+    }
+
+    if (preMeal < 100 && actual === 0 && carbs === 0) {
+        suggestions.push("✅ 飯前血糖穩定且未進食，可能可考慮調降長效胰島素。");
+    }
+
+    if (suggestions.length > 0) {
+        alertBox.innerHTML = suggestions.join("<br>");
+    }
+}
+
+const originalAutoCalc = autoCalculate;
+autoCalculate = function() {
+    originalAutoCalc();
+    showRecommendations();
+}
+</script>
+<script>
+function updateAdjustedDose() {
+    const base = parseFloat(document.getElementById("longInsulin").value);
+    const factor = parseFloat(document.getElementById("adjustLongInsulin").value);
+    let span = document.getElementById("adjustedDose");
+    if (!isNaN(base) && !isNaN(factor)) {
+        const adjusted = base * (1 + factor);
+        span.textContent = "調整後劑量建議：" + adjusted.toFixed(1) + " 單位";
+    } else {
+        span.textContent = "";
+    }
+}
+</script>
+</body>
